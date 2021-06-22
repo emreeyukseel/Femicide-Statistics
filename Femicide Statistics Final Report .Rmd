@@ -3,11 +3,7 @@ title: "A Study on Awareness of Femicides Statistics both in the World and in Tu
 author:
   - Dilara Demiralp[dilarademiralp8@gmail.com]
   - Kazım Emre Yüksel[emreeyukseel@gmail.com]
-output:
-  pdf_document: default
-  html_document: default
-bibliography: references.bib
-nocite: '@*'
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
