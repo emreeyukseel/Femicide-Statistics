@@ -1,0 +1,726 @@
+---
+title: "A Study on Awareness of Femicides Statistics both in the World and in Turkey"
+author:
+  - Dilara Demiralp[dilarademiralp8@gmail.com]
+  - Kazım Emre Yüksel[emreeyukseel@gmail.com]
+output:
+  pdf_document: default
+  html_document: default
+bibliography: references.bib
+nocite: '@*'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE, echo=FALSE}
+library(readxl)
+library(readr)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+library(tidyverse)
+library(rworldmap)
+library(grid)
+library(readxl)
+library(gridExtra)
+library(reshape2)
+library(RColorBrewer)
+library(countrycode)
+library(maps)
+```
+
+```{r, include=FALSE, echo=FALSE}
+df = read_excel('datasets/anıtsayac2.xlsx')
+df_eng = read_csv('datasets/anıtsayac_eng.csv')
+oecd = read_excel('datasets/oecd_data.xlsx')
+df$year <- as.numeric(as.character(df$year))
+```
+
+## The Goal of the Project
+
+The primary objective of the project is to raise awareness in society on femicide and violence against women. Violence manifests itself in various directions in many countries today and violence against women is a social problem experienced in many countries of the World. Unfortunately, it is possible to encounter examples of this situation that resulted in murders of women beyond violence in many parts of the world. With this project, the aim is to reveal all aspects of violence against women whose severity of the situation has not been revealed sufficiently or is tried to be understood superficially. We are going to reveal the situation of our country and the world and the changes over the years by analyzing the statistics.   Using data sets, we will present incidents that resulted in women femicide, the type of violence against women and the various factors affecting violence against women and women femicide Furthermore, in the light of this informations,starting from the starting points of women femicides and violence against women, to reveal what measures can be taken to prevent them and what can be done to raise awareness of the society. 
+Since the primary purpose of the project is to raise awareness in our country, the results and facts will be understandable from all segments of the society.
+
+## Project Datasets
+We obtained our data in excel or csv form from official websites of WHO (World Health Organization)[1], OECD (Organization for Economic Co-operation and Development)[2], Monumental Counter[3],Turkish Statistical Institute[4], IMF dataset in Wikipedia[5].
+
+## Actions Taken
+
+The data obtained from WHO's own website was transferred to R, the data was cleaned and reshaped according to the columns we would use, the data was reordered according to the prevalence of violence against women in countries to use in data visualization.
+The prevalence of violence for women belonging to various age groups is shown on the world map according to country data, and in addition, the prevalence of violence for women between 15 and 49 is also shown on a world map according to country data. Also, these WHO data were filtered and the result was visualized to compare Turkey with European and Asian countries.
+Again, the other data obtained from who's website was used to reveal the prevalence of violence against women from a partner / non-partner in the world regions divided by income and location. This data was re-shaped according to the data to be used for visualization. Bar charts were used to visualize these two WHO data. We also added a world map showing the development level of countries. Finally, we increased the readability of our graphs.
+
+The data in the form of Excel files announced by TUIK were transferred to R. this data has been cleared and reshaped to make it available for use.
+Since the language is Turkish, it has been translated into English. Multiple plots of data belonging to 4 different factors are realized with a single plot process. In this plot process, education, region and living place data are in the form of bar graphs, while the distribution by age is shown on the pie chart.
+
+For the dataset obtained from Monument Counter website, we used both English and Turkish versions of Monument Counter dataset. We fixed our bugs and scraped the most up-to-date data, including the year 2021, from the memorial counter site. However, we did not obtain all the figures from this version of data.  Since we needed english data for our study, we had to use the English dataset available until August 2020. Since a word was expressed in more than one way in the Turkish and English datasets, it was impossible to detect all combinations and to determine for all variables, and the margin of error was high. Therefore, it was near impossible to prepare an error-free English version from turkish version of dataset because there was no data dictionary for all variables and values available. Therefore, we decided to use the English version as we did not want to make mistakes. 
+
+Our actions in the preliminary analysis using the Monument Counter dataset can be summarized as follows;
+
+1. In both versions, we found values in some columns that have the same meaning, but are expressed differently due to punctuation and letter inaccuracy. We have assigned a single value so that they do not appear as a different observation.
+2. To get different visualizations and get answer to pre-prepared questions, we applied grouping operations to different columns to express their relationship with each other 
+3. In our studies for some questions, we created ‘Others’ variables by refracting the variables at certain rates so that we can control the total number of different type of observation.
+
+```{r,message=FALSE,warning=FALSE, echo=FALSE, fig.width = 10, fig.height = 7}
+
+worldfemicide <- read_csv("datasets/xmart.csv")
+
+femicide <-data.frame(worldfemicide) %>%
+  select(-Year,-Age.Group)
+colnames(femicide)<-c("country","value")
+
+wfemicide <-femicide %>% 
+  select(country,value)%>% 
+  group_by(country) %>% 
+  mutate(value=mean(value))%>% 
+  arrange(country)
+wfemicide<-femicide[!duplicated(femicide$country),]
+
+agegroup<-data.frame(worldfemicide)
+colnames(agegroup)<-c("country","Age.Group","year","value")
+agegroup1<-agegroup%>%filter(Age.Group=="15-24 years")
+agegroup1<-agegroup1 %>%
+    arrange(desc(value))
+
+
+agegroup4<-agegroup%>%filter(Age.Group=="15-49 years")
+
+agegroup4<-agegroup4 %>%
+    arrange(desc(value))
+agegroup4$country <- factor(agegroup4$country, levels = agegroup4$country[order(agegroup4$value)])
+
+agegroup4top<-agegroup4 %>% 
+  slice(seq(0.5 * n()))
+
+agegroup4bottom<-agegroup4 %>% 
+  slice(-seq(0.5 * n()))
+
+trage<-data.frame(worldfemicide)
+trage<-agegroup%>%filter(country=="Turkey")
+
+femicideregion <- read.csv("datasets/RHR_IPV.csv")
+region<-data.frame(femicideregion) %>% 
+   slice(-1:-3) 
+colnames(region)<-c("GbdRegion", "Freq")
+region<- separate(region,Freq, c("Freq",NA), sep = " ") 
+region$Freq<-as.numeric(region$Freq)
+
+npregion<- read.csv("datasets/RHR_NPSV.csv")
+npregion<-data.frame(npregion) %>% 
+   slice(-1:-3) 
+colnames(npregion)<-c("NGbdRegion", "NFreq")
+npregion<- separate(npregion,NFreq, c("NFreq",NA), sep = " ") 
+npregion$NFreq<-as.numeric(npregion$NFreq)
+region$GbdRegion <- factor(region$GbdRegion, levels = region$GbdRegion[order(region$Freq)])
+
+```
+
+```{r, echo=FALSE, fig.width = 7, fig.height = 12, fig.align="center"}
+npregion$NGbdRegion <- factor(npregion$NGbdRegion, levels = npregion$NGbdRegion[order(npregion$NFreq)])
+npregion <- npregion %>% slice(-3)
+```
+
+```{r, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+
+r1 <- ggplot(region,aes(x=GbdRegion,y=Freq,fill=GbdRegion)) +
+  geom_bar(stat="identity",width=0.5) +
+  theme(legend.position="right") + 
+  labs(x="GBD Regions",y="Prevalance(%)",title="Partner Violence on  Women Prevalence in GBD Regions",caption=" data from 2010,15-49 years") + 
+  scale_fill_manual(values=rainbow(23)) +
+  theme_bw() +
+  theme(axis.title=element_text(size=12,face="bold"),
+        axis.text.x = element_text(size=0,angle = 90,hjust=1, vjust = 0,  colour="black"),
+        axis.text.y = element_text(colour="black"),plot.title=element_text(size=12, face="bold")) +
+  ggsave('r1.png')
+
+r2<-ggplot(npregion,aes(x=NGbdRegion,y=NFreq,fill=NGbdRegion))+
+  geom_bar(stat="identity",width=0.5) +
+  geom_text(aes(label=NFreq), vjust=0.3, color="black", size=4)+
+  labs(x="GBD Regions",y="Prevalance(%)",title="Nonpartner Sexual Violence Prevalence",caption="data from 2010,15-69 years") +
+  theme_bw() +
+  theme(axis.title=element_text(size=12,face="bold"),
+        axis.text.x = element_text(size=0,angle = 90,hjust=1, vjust = 0.5, colour="black"),
+        axis.text.y = element_text(colour="black"),plot.title=element_text(size=12, face="bold"),legend.position="right")
+
+gridExtra::grid.arrange(r1, r2, nrow=2)
+
+```
+
+
+
+The regions divided according to their income and location, it is possible to say that the income of the country is also a factor that affects the prevalence of violence against women since it is based on the Global Burden of Disease (GBD) regional classification system. we can see that the regions with the highest prevalence of violence against women are in Africa
+
+
+```{r,echo=FALSE, include=FALSE, echo=FALSE, fig.align="center"}
+femicide$region<-countrycode(sourcevar = femicide$country, origin = "country.name",destination = "region")
+euasia<-femicide%>%filter(region=="Europe & Central Asia")
+euasia <-euasia%>% 
+  select(country,value)%>% 
+  group_by(country) %>% 
+  mutate(value=mean(value))%>% 
+  arrange(country)
+eucasia<-euasia[!duplicated(euasia$country),]
+eucasia$country <- factor(eucasia$country, levels =eucasia$country[order(eucasia$value)])
+```
+
+```{r,include=FALSE, echo=FALSE, fig.align="center"}
+map1<-worldmap1 <- joinCountryData2Map(agegroup4, joinCode="NAME", nameJoinColumn="country",  nameCountryColumn = "Country")
+worldmap0 <- joinCountryData2Map(wfemicide, joinCode="NAME", nameJoinColumn="country",  nameCountryColumn = "Country")
+worldmap2 <- joinCountryData2Map(eucasia, joinCode="NAME", nameJoinColumn="country",  nameCountryColumn = "Country")
+```
+
+
+```{r,include=FALSE, echo=FALSE, fig.align="center"}
+Advanced_Economies <- read_excel("datasets/Advanced_Economies.xlsx")
+names(Advanced_Economies) <- c("Country","Economies")
+data <-select( Advanced_Economies,"Country")
+
+data <- rename(data, "ISOname" = Country)
+
+data_iso <- iso3166
+head(data_iso)
+data_iso <- rename(data_iso, "id" = a2)
+head(data_iso)
+
+data_iso$CountryStatus <- ifelse(data_iso$`ISOname` %in% data$ISOname, "AdvancedEconomy", "EmergingEconomy")
+world_map <- map_data(map = "world")
+world_map$region <- iso.alpha(world_map$region)
+data_iso$country<-as.character(data_iso$CountryStatus)
+```
+
+```{r,fig.height=5,fig.width=8, echo=FALSE, warning=FALSE, message=FALSE,  fig.align="center"}
+   ggplot(data_iso) +
+  geom_map(aes(map_id=id,fill =CountryStatus), map = world_map) +
+  geom_polygon(data = world_map, aes(x = long, y = lat, group = group), colour = 'black', fill = NA) +
+  expand_limits(x = world_map$long, y = world_map$lat) +scale_fill_manual(values=c("coral","bisque"))+
+  theme_void() +
+  coord_fixed()
+```
+First of all, it is a map showing the economic development of the countries in the world to IMF data in order to compare our country with other countries.
+
+```{r,fig.width=10,fig.height=8,echo=FALSE, fig.align="center"}
+
+ggplot(agegroup4,aes(x=country,y=value)) +
+  geom_bar(stat="identity",fill="darkmagenta",width=0.5) +
+  geom_bar(data=subset(agegroup4, country=="Turkey"),aes(x=country,y=value),stat="identity",fill="darkorange",width=0.5) +
+  labs(x="Countries",y="Frequency",title="The Frequency of Women(Ages 15-49) Being Subjected to Violence by Their   Partners") +
+  theme(axis.title=element_text(size=14,face="bold"),axis.text.x=element_text(angle=90,hjust=1,vjust=0,colour="black"),axis.text.y=element_text(colour="black"),plot.title=element_text(size=16,face="bold")) +
+  scale_y_continuous(name="Frequency") + 
+  theme_bw() + 
+  coord_flip()
+```
+This bar graph shows the situation of our country with other countries in terms of violence against women between the ages of 15-49. This is clearly seen on the world map below.
+
+```{r,fig.height=5,fig.width=8, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center"}
+mapCountryData(worldmap1, nameColumnToPlot="value", catMethod="FixedWidth",borderCol="black",mapTitle="Frequency of Women Femicide in  ages between 15-49 years",missingCountryCol="white",lwd=1,oceanCol="lightcyan")
+```
+
+As we can see WHO data on the world map, countries where the prevalence of violence in the 15-49 age group is high in the world are in the African continent. Although Turkey is better off compared to these countries, it is in the middle in terms of prevalence of violence against women, but most of these countries are not developed countries.
+
+```{r,fig.height=7,fig.width=7, echo=FALSE, warning=FALSE, message=FALSE,  fig.align="center"}
+mapCountryData(worldmap0, nameColumnToPlot="value", catMethod="pretty",borderCol="black",mapTitle="Frequency of Women Femicide in WHO Regions",missingCountryCol="white",lwd=1,oceanCol="lightcyan")
+```
+
+Again, when we compare the WHO data without age restrictions on the world map and the prevalence of violence against women, we see that the developed countries have similar values to each other. Turkey has a higher rate than these countries.
+It can be deduced that Turkey is not at a good enough level in terms of violence against women, and the prevalence of violence should fall below a certain level and should be at the level of developed countries.
+
+```{r,fig.height=5,fig.width=8, echo=FALSE, warning=FALSE, message=FALSE,  fig.align="center"}
+mapCountryData(worldmap2,nameColumnToPlot="value", catMethod="pretty",borderCol="black",mapTitle="Frequency of Women Femicide in Europe and Cental Asia",mapRegion="eurasia",missingCountryCol="white",lwd=1,oceanCol="lightcyan",colourPalette="heat")
+```
+
+
+
+```{r,fig.height=4,fig.width=10, echo=FALSE, warning=FALSE,  fig.align="center"}
+levels(eucasia$country)[16] <- "Great Britain"
+ggplot(eucasia,aes(x=country, y=value)) +
+      geom_bar(stat="identity",fill="lightblue",width=0.5) +
+      geom_bar(data=subset(eucasia, country == "Turkey"),aes(x=country,y=value),stat="identity",fill="lightblue", color="tomato",width=0.5)+
+      theme(legend.position="none",axis.title=element_text(size=14,face="bold"),
+        axis.text.x = element_text(angle = 90,hjust=1, vjust = 0, colour="black",size=14),
+        axis.text.y = element_text(colour="black",size=14),plot.title=element_text(face="bold",size=16)) +  
+      labs(x="Countries",y="Frequency",title="Partner Violence on  Women in Europe and Center Asia ") + 
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+Even though Turkey is in a good condition compared to these African or some Asian countries, it is the third country with the highest prevalence of violence against women compared to its neighboring countries, namely Europe and Asia.
+
+
+```{r fig.width = 14, fig.height = 14, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center"}
+library(reshape2)
+library(viridis)
+library(hrbrthemes)
+
+hrbrthemes::import_roboto_condensed() 
+education <- read_excel("datasets/t4 (1).xlsx",skip=4)
+
+education<-select(education,1,2,5,8)%>% slice(-6)
+colnames(education)<-c("Education.Level","Physical","Sexual","Physical/Sexual")
+ef <- melt(education,id.vars='Education.Level')
+
+graph1<-ggplot(ef, aes(x=variable, y=value, fill=Education.Level)) +
+          geom_bar(position="dodge", stat="identity")+
+          scale_fill_viridis(discrete = T)+
+          ggtitle("Rate of Violence Suffered by Women by Their Education Level") +
+          theme(axis.title=element_text(size=15,face="bold"),
+          axis.text.x = element_text(hjust=0.5, vjust = 0.5,  colour="black",size=14),
+          axis.text.y = element_text(colour="black",size=14),plot.title=element_text(size=15, face="bold")) +  
+          labs(x="Violance Types",y="Rate(%)")+ theme_bw()
+
+pop<- read_excel("datasets/t1 (1).xlsx",skip=3)
+
+pop<-select(pop,1,2,5,8)%>% slice(-4)
+colnames(pop)<-c("Residence.Place","Physical","Sexual","Physical/Sexual")
+
+lf <- melt(pop, id.vars='Residence.Place')
+
+
+graph2<-ggplot(lf, aes(x=variable, y=value, fill=Residence.Place)) +geom_bar(position="dodge", stat="identity") +scale_fill_viridis(discrete = T) +
+    ggtitle("Distribution of Violence Against Women by Place of Residence") +
+    theme(axis.title=element_text(size=15,face="bold"),
+        axis.text.x = element_text(hjust=0.5, vjust = 0.5, colour="black",size=14),
+        axis.text.y = element_text(colour="black",size=14),plot.title=element_text(size=15, face="bold")) +  
+    labs(x="Violance Types",y="Rate(%)")+ theme_bw()
+
+
+
+trregion<- read_excel("datasets/t2.xlsx",skip=4)
+trregion<-select(trregion,1,2,5,8)%>% slice(-1)
+colnames(trregion)<-c("Region","Physical","Sexual","Physical/Sexual")
+
+
+
+rf <- melt(trregion, id.vars='Region')
+graph3<-ggplot(rf, aes(x=variable, y=value, fill=Region)) +geom_bar(position="dodge", stat="identity") +scale_fill_viridis(discrete = T) +
+    ggtitle("Distribution of Violence Against Women by Regions") +
+    theme(panel.background = element_rect(fill='white', colour='black'),axis.title=element_text(size=15,face="bold"),axis.text.x = element_text(hjust=0.5, vjust =0.5, colour="black",size=6), axis.text.y=element_text(colour="black",,size=14),legend.position="bottom",plot.title=element_text(size=15,face="bold")) +  facet_wrap(~Region,  ncol=4, strip.position = "top")+
+    labs(x="Violance types",y="Rate(%)")
+
+trage<-data.frame(worldfemicide)
+trage<-agegroup%>%filter(country=="Turkey")
+
+
+trage<- trage %>% 
+  arrange(desc(Age.Group)) %>%
+  mutate(prop = value / sum(trage$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+
+graph4<-ggplot(trage, aes(x="", y=prop,fill=Age.Group)) +
+        geom_bar(stat="identity", width=1,color="grey") +
+        coord_polar("y", start=0) +
+        ggtitle("Distribution of Violence Against Women by Age") +
+        theme_void() + 
+        theme(legend.position="right",plot.title=element_text(size=15, face="bold")) +
+        scale_fill_viridis(discrete= TRUE)+ theme_bw()
+
+gridExtra::grid.arrange(graph1,graph2,graph3,graph4, ncol = 2 ,nrow = 2,top=textGrob("DISTRIBUTION OF VIOLENCE TO WOMEN IN TURKEY ACCORDING TO VARIOUS FACTORS IN WIEW OF 2014 DATA",gp = gpar(fontface = 2, fontsize = 17),hjust=0.5))
+
+```
+
+Based on TUIK data, the importance of education comes to the fore as a factor affecting violence against women in Turkey. As the education level increases, the prevalence of violence decreases. Again, if we examine these data in terms of living places and regions, as the living standards increase, the rate of women being subjected to violence decreases.
+
+
+```{r, fig.height=5, fig.width=10, echo=FALSE}
+  ggplot(df, aes(x = year)) + 
+  geom_histogram(binwidth = 1,  
+                 fill='#0E6DA6',
+                 center = 50,  #fill: fill the color of bins
+                 color= "black") +
+  scale_x_continuous(breaks = seq(2008, 2020, 1)) +
+  ggtitle("Number of femicides by years in Turkey") +
+  xlab("Year") +
+  ylab("Number of femicides") +
+  theme_bw()
+```
+According to the Monument Counter data, the number of murders of women in Turkey has increased over the years, according to reports published on social media or in news newspapers. We observed an increasing trend between 2011-2020.
+
+```{r, fig.height=5, fig.width=10, include=FALSE, echo=FALSE}
+unique(df_eng$killer1)
+```
+
+```{r, fig.height=5, fig.width=10, include=FALSE, echo=FALSE}
+unique(df$killer1)
+```
+
+```{r, fig.height=3, fig.width=10, include=FALSE, echo=FALSE}
+df$killer1[which(df$killer1 == "Tanidigi BIrisi")] <- "Tanidigi Birisi"
+df$killer1[which(df$killer1 == "Tanidgi Birisi")] <- "Tanidigi Birisi"
+df$killer1[which(df$killer1 == "Tanidigi birisi")] <- "Tanidigi Birisi"
+
+df$killer1[which(df$killer1 == "Tespit Edlemeyen")] <- "Tespit Edilemeyen"
+df$killer1[which(df$killer1 == "Tanidgi Birisi")] <- "Tanidigi Birisi"
+df$killer1[which(df$killer1 == "Tanidigi birisi")] <- "Tanidigi Birisi"
+
+df$killer1[which(df$killer1 == "Eski sevgilisi")] <- "Eski Sevgilisi"
+df$killer1[which(df$killer1 == "Eski Sevgilsi")] <- "Eski Sevgilisi"
+
+df$killer1[which(df$killer1 == "Kendisi")] <- "Intihar"
+
+```
+
+```{r, fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+df_killer <- group_by(df_eng, killer1) %>%
+    summarize(counts = n()) %>%
+    mutate(perc = counts / sum(counts)) %>%
+    arrange(desc(perc)) %>%
+    mutate(label_pos = cumsum(perc) - perc / 2)
+
+others_val <- df_killer %>%
+  slice(11:64) %>%
+  summarize_if(is.numeric, sum, na.rm = TRUE)
+others <- data.frame(killer1='Others', others_val)
+
+first_10 <- df_killer %>%
+  slice(1:10)
+
+murder_who <- rbind(first_10, others)
+
+specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
+pie(murder_who$perc,
+    col = rainbow(11),
+    labels = paste0(murder_who$killer1,
+                               " (",
+                               specify_decimal(murder_who$perc,2),
+                               ")"), 
+    main="Murderers and their percentages", radius=1, cex=0.85)
+
+```
+Between 2008-2020, we see that most of their killers were committed by their husbands. Unfortunately, domestic violence and homicides account for a large proportion of femicides in our country.
+
+```{r, fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+df = read_excel('datasets/anıtsayac2.xlsx')
+df$city[is.na(df$city)] <- 'Not known'
+
+df_city <- group_by(df, city) %>%
+    summarize(counts = n()) %>%
+    mutate(perc = counts / sum(counts)) %>%
+    arrange(desc(perc)) %>%
+    mutate(label_pos = cumsum(perc) - perc / 2)
+
+others_val <- df_city %>%
+  slice(6:64) %>%
+  summarize_if(is.numeric, sum, na.rm = TRUE)
+others <- data.frame(city='Other cities', others_val)
+
+first_10 <- df_city %>%
+  slice(1:6)
+
+murder_who <- rbind(first_10, others)
+
+specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
+pie(murder_who$perc, 
+    col = rainbow(11),
+    labels = paste0(murder_who$city,
+                               " (",
+                               specify_decimal(murder_who$perc,2),
+                               ")"), 
+    main="City where the murder was committed", radius=1, cex=0.85)
+```
+When we look at the distribution of cities where the murder was committed, the most murders are committed in 3 major cities. When we looked at the population, this was the excepted result.
+
+```{r, fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+df_eng$killingway1[is.na(df_eng$killingway1)] <- 'Bilinmiyor'
+
+df_killingway <- group_by(df_eng, killingway1) %>%
+    summarize(counts = n()) %>%
+    mutate(perc = counts / sum(counts)) %>%
+    arrange(desc(perc)) %>%
+    mutate(label_pos = cumsum(perc) - perc / 2)
+
+others_val <- df_killingway %>%
+  slice(6:64) %>%
+  summarize_if(is.numeric, sum, na.rm = TRUE)
+others <- data.frame(killingway1='Others', others_val)
+
+first_10 <- df_killingway %>%
+  slice(1:6)
+
+murder_who <- rbind(first_10, others)
+
+specify_decimal <- function(x, k) trimws(format(round(x, k), nsmall=k))
+pie(murder_who$perc, 
+    col = rainbow(11),
+    labels = paste0(murder_who$killingway1,
+                               " (",
+                               specify_decimal(murder_who$perc,2),
+                               ")"), 
+    main="Killing way and their percantages", radius=1, cex=0.75)
+```
+About half of the murder tools are firearms, while 3 out of 4 murders are committed with knives and guns. The widespread use of unlicensed weapons leads to an increase in these murders.
+
+```{r, fig.height=5, fig.width=10, include=FALSE, echo=FALSE}
+unique(df$statusofkiller)
+```
+
+```{r, fig.height=5, fig.width=10, include=FALSE, echo=FALSE}
+df$statusofkiller[which(df$statusofkiller == "Sorusturma Suruuor")] <- "Sorusturma Suruyor"
+df$statusofkiller[which(df$statusofkiller == "Sorusturma suruyor")] <- "Sorusturma Suruyor"
+
+df$statusofkiller[which(df$statusofkiller == "Tespit Edilemeyen")] <- "Araniyor"
+```
+
+```{r fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+df_s <- group_by(df_eng, statusofkiller) %>%
+    drop_na(any_of('statusofkiller')) %>%
+    summarize(counts = n()) %>%
+    mutate(perc = counts / sum(counts)) %>%
+    arrange(desc(perc)) %>%
+    mutate(label_pos = cumsum(perc) - perc / 2)
+
+ggplot(df_s) + 
+geom_col(aes(x=reorder(statusofkiller, -counts),y=counts, fill = statusofkiller)) +
+ggtitle("The distrubition of different case status between 2008-2020") +
+xlab("Counts") +
+ylab("Case Status") +
+guides(fill=guide_legend(title="Case Status")) +
+theme_bw()
+```
+
+
+```{r fig.height=5, fig.width=12, warning=FALSE,message=FALSE, echo=FALSE, fig.align="center"}
+df_eng %>%
+  group_by(year,age) %>%
+  summarise(counts = n()) %>%
+  drop_na() %>%
+
+  ggplot() + 
+  geom_col(aes(x=year, y=counts, color = age, fill = age), position = position_dodge()) +
+  scale_x_continuous(breaks = seq(2008, 2020, 1)) +
+  ggtitle("The total number of age status based on years between 2008-2020") +
+  xlab("Years") +
+  ylab("The number of femicide") +
+  #guides(fill=guide_legend(title="Age Status"))
+  guides(fill = guide_legend(override.aes = list(color = NA), title="Age Status"), 
+           color = FALSE, 
+           shape = FALSE) +
+  theme_bw()
+```
+
+Looking at the distribution of murders by age status, the most important thing is that in recent years, the murder of women aged 18 and under has increased. As the number of murders has increased over the years, the increase in adult murders was the result we expected.
+
+```{r fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+df$month <- substr(df$date, start = 4, stop = 5)
+df$month <- as.numeric(df$month)
+
+df <- df %>%
+  mutate(month_name = month.name[month])
+
+df2 <- df %>%
+  group_by(month_name) %>%
+  summarise(counts = n()) %>%
+  mutate(percent = counts / sum(counts) * 100) %>%
+  drop_na() %>%
+  arrange(match(month_name, month.name))
+
+df2$month_name <- factor(df2$month_name, levels = df2$month_name)
+
+df2 %>%
+  ggplot() + 
+  geom_col(aes(x=month_name, y=percent, color = month_name, fill = month_name), width = 0.4) +
+  geom_text(aes(x=month_name,y=round(percent, 2),label=paste('%',round(percent, 2))),vjust=-0.5, size=4) +
+  ggtitle("Month of the murder(%)") +
+  xlab("Months") +
+  ylab("Percantage of commited murders") +
+  theme(legend.position = "none") +
+  theme_bw()
+```
+
+May and September are the months which most murders are committed when we look at the murders committed by all the years. We also found that this result was consistent with a study conducted by the General Directorate of Security.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
+library(sf)
+
+turkey <- readRDS("gadm36_TUR_1_sf.rds")
+df3 = read_csv('datasets/anıtsayac_eng.csv')
+
+df3 <- df3 %>%
+    group_by(city) %>%
+    summarise(count=n())
+
+turkey$NAME_1 <- toupper(turkey$NAME_1)
+df3$city <- toupper(df3$city)
+
+turkey$NAME_1[which(turkey$NAME_1 == "K. MARAS")] <- "KAHRAMANMARAŞ"
+turkey$NAME_1[which(turkey$NAME_1 == "KINKKALE")] <- "KIRIKKALE"
+turkey$NAME_1[which(turkey$NAME_1 == "ZINGULDAK")] <- "ZONGULDAK"
+
+
+df3$city <- gsub('İ', 'I', df3$city)
+df3$city <- gsub('Ğ', 'G', df3$city)
+df3$city <- gsub('Ş', 'S', df3$city)
+df3$city <- gsub('Ö', 'O', df3$city)
+df3$city <- gsub('Ü', 'U', df3$city)
+
+turkey$NAME_1 <- gsub('İ', 'I', turkey$NAME_1)
+turkey$NAME_1 <- gsub('Ğ', 'G', turkey$NAME_1)
+turkey$NAME_1 <- gsub('Ş', 'S', turkey$NAME_1)
+turkey$NAME_1 <- gsub('Ö', 'O', turkey$NAME_1)
+turkey$NAME_1 <- gsub('Ü', 'U', turkey$NAME_1)
+
+df3$city <- trimws(df3$city)
+
+df3 <- arrange(df3, city)
+turkey <- arrange(turkey, NAME_1)
+
+cbind(turkey$NAME_1, df3$city)
+
+colnames(turkey)[which(names(turkey) == "NAME_1")] <- "city"
+merged_df <- left_join(turkey, df3, by = "city") 
+```
+
+```{r, fig.height=5, fig.width=10, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center"}
+library(plotly)
+
+merged_df$centroids <- st_centroid(merged_df$geometry)
+
+merged_df %>% 
+  ggplot() +
+  geom_sf(aes(fill = count)) +
+  geom_sf_label(aes(label = city, geometry = centroids, size=1), colour = "black", size=1.5) +
+  scale_fill_gradient(low="yellow", high="red", breaks=c(1,100,200,300),labels=c('1','100','200','300')) +
+  theme_void() +
+  ggtitle("Number of femicides by province between 2009-2020") +
+  theme(title = element_text(face="bold"), plot.title = element_text(hjust = 0.3))
+```
+
+We see the distribution of femicides in Turkey, according to data available at the Monument Counter website. While the highest number of murders are seen in Istanbul, which has the highest human population, metropolitan cities such as Izmir and Ankara follow respectively. Unfortunately, Diyarbakir has a serious number of femicides in the eastern region.
+
+
+```{r, fig.height=5, fig.width=10, include=FALSE, echo=FALSE}
+oecd %>%
+  arrange(desc(oecd$`Violence against women`))
+```
+
+```{r fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+oecd %>%
+  arrange(desc(oecd$`Violence against women`)) %>%
+  slice(1:50) %>%
+  ggplot() + 
+  geom_col(aes(x=reorder(Country, `Violence against women`), 
+               y=`Violence against women`,
+               fill=factor(ifelse(Country=="Turkey","Highlighted","Normal"))), width = 0.4) +
+  #geom_text(aes(x=Country,y=round(percent, 2),label=paste('%',round(percent, 2))),vjust=-0.5, size=4) +
+  ggtitle("Percentage of ever-partnered women who ever suffered intimate partner physical and/or sexual violence in 2019\nTop 50 Countries") +
+  xlab("Top 50 Countries") +
+  ylab("Percantage") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
+```
+
+
+```{r fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+oecd %>%
+  arrange((oecd$`Violence against women`)) %>%
+  slice(1:50) %>%
+  ggplot() + 
+  geom_col(aes(x=reorder(Country, `Violence against women`), 
+               y=`Violence against women`,
+               fill=factor(ifelse(Country=="Turkey","Highlighted","Normal"))), width = 0.4) +
+  #geom_text(aes(x=Country,y=round(percent, 2),label=paste('%',round(percent, 2))),vjust=-0.5, size=4) +
+  ggtitle("Percentage of ever-partnered women who ever suffered intimate partner physical and/or sexual violence in 2019\nBottom 50 Countries") +
+  xlab("Bottom 50 Countries") +
+  ylab("Percantage") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
+```
+
+
+We plotted the 50 highest and 50 lowest countries using the ratio of ever-partnered women who ever suffered intimate partner physical and/or sexual violence in 2019. The place of Turkey was highlighted with red and placed 28th among the top 50 countries.
+
+
+```{r fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+oecd %>%
+  arrange(desc(oecd$`Freedom of movement`)) %>%
+  slice(1:50) %>%
+  ggplot() +
+  geom_col(aes(x=reorder(Country, `Freedom of movement`), 
+               y=`Freedom of movement`,
+               fill=factor(ifelse(Country=="Turkey","Highlighted","Normal"))), width = 0.4) +
+  ggtitle("Percentage of feeling safe walking alone at night in the city or area where they live in 2019\nTop 50 Countries") +
+  xlab("Top 50 Countries") +
+  ylab("Percantage") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
+```
+
+```{r fig.height=5, fig.width=10, echo=FALSE, fig.align="center"}
+oecd %>%
+  arrange((oecd$`Freedom of movement`)) %>%
+  slice(1:50) %>%
+  ggplot() + 
+  geom_col(aes(x=reorder(Country, `Freedom of movement`), 
+               y=`Freedom of movement`,
+               fill=factor(ifelse(Country=="Turkey","Highlighted","Normal"))), width = 0.4) +
+  ggtitle("Percentage of feeling safe walking alone at night in the city or area where they live in 2019\nBottom 50 Countries") +
+  xlab("Bottom 50 Countries") +
+  ylab("Percantage") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
+```
+
+We also plotted the 50 highest and 50 lowest countries using the index of feeling safe walking alone at night in 2019. The place of Turkey again was highlighted with red and placed 24th country from the end.
+
+```{r fig.height=8, fig.width=12, echo=FALSE, warning=FALSE,message=FALSE, fig.align="center"}
+library(mapproj)
+library(grid)
+library(gtable)
+WorldData <- map_data('world')
+oecd$`Law for violence` <- as.character(oecd$`Law for violence`)
+
+p <- ggplot() +
+    geom_map(data = WorldData, map = WorldData,
+                  aes(group = group, map_id=region),
+                  fill = "white", colour = "#7f7f7f", size=0.5) + 
+    geom_map(data = oecd, map=WorldData,
+                  aes(fill=`Law for violence`, map_id=Country),
+                  colour="#7f7f7f", size=0.5) +
+    coord_map("rectangular", lat0=0, xlim=c(-180,180), ylim=c(-60, 90)) +
+    scale_color_gradient(low="blue", high="red") +
+    theme(plot.background = element_rect(fill = "transparent", colour = NA),
+         panel.border = element_blank(),
+         panel.background = element_rect(fill = "transparent", colour = NA),
+         legend.position="top",
+         legend.direction = "horizontal") +
+  labs(caption="0: The legal framework protects women from violence including intimate partner violence, rape and sexual harassment, without any legal exceptions and in a comprehensive approach.
+0.25: The legal framework protects women from violence including intimate partner violence, rape and sexual harassment, without any legal exceptions. However, the approach is not comprehensive.
+0.5: The legal framework protects women from violence including intimate partner violence, rape and sexual harassment. However, some legal exceptions occur.
+0.75: The legal framework protects women from some forms of violence including intimate partner violence, rape or sexual harassment but not all.
+1: The legal framework does not protect women from violence nor intimate partner violence nor rape and sexual harassment.")
+p
+```
+
+This world map takes values between 0-1 divided by 5. As the value goes from 0 to 1, the color on countries turns dark red. 0 means that the legal framework protects women from violence including intimate partner violence, rape and sexual harassment, without any legal exceptions and in a comprehensive approach while 1 means that the legal framework does not protect women from violence nor intimate partner violence nor rape and sexual harassment.
+
+Turkey's get value as 0.5 means the legal framework protects women from violence including intimate partner violence, rape, and sexual harassment. However, some legal exceptions occur.
+
+## Result and Discussion
+
+Throughout our project, we obtained data on violence against women and femicide in Turkey and around the world through various sources.With the data we obtained, we revealed the situation of our country and the situation of the world through data visualizations and it is understood that our country is unfortunately not in a good situation in terms of violence against women and femicide. In addition, in line with the information we have obtained, various reasons affecting this situation come to the fore. Examples of factors affecting the rate of violence against women and femicide are: 
+
+•	Education level,
+
+•	Income level, 
+
+•	Place of residence,
+
+•	Laws.
+
+It seems that Turkey needs to take various measures in order to achieve a good situation in this regard. Even if violence against women does not completely disappear, this rate can be reduced by a conscious, educated society and laws that protect the individuals in the society.
+
+## Conclusion
+Our aim in doing this study is to explain with data that the number of femicide in the last 10 years is a serious issue that cannot be ignored both in Turkey and in the world. It is clear that every country in the world needs to pass laws to protect women against violence and they need to lower their current statistics. When we look at the data that we can only reach in our country, we see that this number is very high and it has been on an increasing trend in recent years. Considering that there are confidential data that cannot be reached, this number, unfortunately, increases even more. We hope that in the coming years, a definitive solution will be brought to this issue and more serious laws and penalties will be enacted on femicide.
+
+# References
+
+[1] World Health Organization: Retrieved March 28, 2021, from
+https://www.who.int/data/gho/data/indicators/indicator-details/GHO/ proportion-of-ever-partnered-women-and-girls-aged-15-49-years-subjected-to-physical-and-or-sexual-viol
+
+[2] Organization for Economic Co-operation and Development: Retrieved March 28, 2021, from https: //stats.oecd.org/Index.aspx?DataSetCode=GIDDB2019
+
+[3] Anıt Sayaç : ŞIDDETTEN Ölen Kadınlar İçin Dijital anıt. (n.d.). Retrieved March 28, 2021, from
+http://anitsayac.com/
+
+[4] Turkish Statistical Institute, retrieved from https://tuikweb.tuik.gov.tr/MicroVeri/KYAS_2014/ozet-tablolar/index.html
+
+[5]https://en.wikipedia.org/wiki/Developed_country#cite_note-qq-13

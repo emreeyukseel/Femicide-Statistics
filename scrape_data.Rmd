@@ -1,0 +1,55 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)  
+library(rvest)    
+library(stringr)   
+library(rebus)     
+library(lubridate)
+
+simple <- read_html("http://anitsayac.com")
+```
+
+```{r}
+links <- simple %>% 
+  html_nodes('a') %>% 
+  html_attr("href")
+```
+
+```{r}
+col_names <- c('Ad Soyad', 'Maktülün yaşı', 'İl/İlçe', 'Tarih', 'Neden Öldürüldü', 'Kim tarafından öldürüldü','Korunma talebi', 'Öldürülme şekli', 'Failin durumu', 'Kaynak')
+
+df <- data.frame(matrix(ncol = 10, nrow = 0))
+x <- col_names
+colnames(df) <- x
+```
+
+```{r}
+for (val in links[2:3535]){
+  url <- paste('http://anitsayac.com/', val, sep='')
+  l <- c()
+  u2 <- read_html(url)
+  
+  for (i in 2:10){
+    l[i] <- if_else(identical(html_text(html_nodes(u2, xpath = paste(paste("/html/body/text()[", i, sep=''),']',sep=''))), character(0)),
+                  'NA',html_text(html_nodes(u2, xpath = paste(paste("/html/body/text()[", i, sep=''),']',sep='')))[1])
+  }
+  
+  l[11] = if_else(identical(html_text(html_nodes(u2,'a')), character(0)),
+                  'NA',html_text(html_nodes(u2,'a'))[1])
+  df[nrow(df)+1,] <- l[-1]
+}
+```
+
+```{r}
+df <- df[rowSums(df == "NA")<5, , drop = FALSE]
+```
+
+```{r}
+library("writexl")
+write_xlsx(df,"anıtsayac_updated.xlsx")
+```
+
